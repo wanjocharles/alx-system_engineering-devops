@@ -1,50 +1,38 @@
 #!/usr/bin/python3
-""" Rest API script that gathers data from an API and saves it to a CSV. """
-import csv
-import json
+"""Returns to-do list information for a given employee ID."""
+import requests
 import sys
-import urllib.request
-import urllib.error
 
-# The base API url for getting the employee object
-USER_API_URL = "https://jsonplaceholder.typicode.com/users/"
 
-# The base API url for getting all todo objects for an employee
-TODO_API_URL = "https://jsonplaceholder.typicode.com/todos?userId="
+def tasks_done(id):
+    '''Script that displays an employee completed TODO tasks in stout
+        Parameters:
+        employee_id: Is an interger representing an employee id.
+    '''
 
-# Employee ID passed as an argument to the script
-emp_id = sys.argv[1] if len(sys.argv) > 1 else ""
+    url = "https://jsonplaceholder.typicode.com/users/{}".format(id)
+    response = requests.get(url)
+    response_json = response.json()
+    employee_name = response_json.get("name")
 
-if not emp_id.isdigit():
-    print("Employee ID should be a numeric value.")
-    sys.exit(1)
+    url = "https://jsonplaceholder.typicode.com/users/{}/todos".format(id)
+    todos = requests.get(url)
+    todos_json = todos.json()
+    number_tasks = len(todos_json)
 
-try:
-    user_url = f"{USER_API_URL}{emp_id}"
-    todos_url = f"{TODO_API_URL}{emp_id}"
+    task_compleated = 0
+    task_list = ""
 
-    emp_response = urllib.request.urlopen(user_url)
-    todos_response = urllib.request.urlopen(todos_url)
+    for task in todos_json:
+        if task.get("completed") is True:
+            task_compleated += 1
+            task_list += "\t " + task.get("title") + "\n"
 
-    emp_data = emp_response.read()
-    todos_data = todos_response.read()
+    print("Employee {} is done with tasks({}/{}):".format(employee_name,
+                                                          task_compleated,
+                                                          number_tasks))
+    print(task_list[:-1])
 
-    employee = json.loads(emp_data)
-    todos = json.loads(todos_data)
 
-    username = employee.get("username")
-
-    with open(f"{emp_id}.csv", "w", newline="") as csvfile:
-        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-        for todo in todos:
-            todo_status = todo.get("completed")
-            todo_title = todo.get("title")
-            writer.writerow([emp_id, username, todo_status, todo_title])
-
-except urllib.error.URLError as err:
-    print(f"An error occurred while fetching data from the API: {err}")
-except json.JSONDecodeError as err:
-    print(f"Error decoding JSON data: {err}")
-except Exception as err:
-    print(f"An unexpected error occurred: {err}")
-
+if __name__ == "__main__":
+    tasks_done(sys.argv[1])
